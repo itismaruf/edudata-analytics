@@ -129,7 +129,7 @@ if "app_loaded" not in st.session_state:
         <div class="splash-container" id="splash">
             <div class="ai-emoji">✨</div>
             <div class="splash-title">ClaryData</div>
-            <div class="splash-subtext">Интеллектуальная система анализа больших данных</div>
+            <div class="splash-subtext">Интеллектуальная система анализа данных</div>
             <div class="splash-footer">© Created by Rahimov M.A.</div>
         </div>
 
