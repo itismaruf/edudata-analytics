@@ -307,7 +307,6 @@ import time
 
 def show_pivot_tab(df: pd.DataFrame) -> None:
     """Вкладка: сводные таблицы (pivot) и фиксация результата в ИИ + визуализация."""
-    st.subheader("📊 Сводные таблицы (Pivot)")
 
     col1, col2 = st.columns(2)
     with col1:
