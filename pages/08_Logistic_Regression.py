@@ -6,6 +6,7 @@ from Utils.modeling_utils import ensure_modeling_state, sticky_selectbox, show_m
                                     prepare_features_and_target, train_logistic_regression, evaluate_model, \
                                     compute_feature_importance, interpret_feature_importance, mark_model_trained, \
                                     show_results_and_analysis, show_single_prediction, show_export_buttons
+from Utils.AI_helper import connect_ai_model_results
 
 
 
@@ -86,4 +87,23 @@ if "modeling" in st.session_state:
 
     show_results_and_analysis(data)
     show_single_prediction(data, df)
+    
+    # Кнопка отправки результатов в ИИ (перед разделителем экспорта)
+    if st.button("🤖 Объяснить результаты в ИИ", key="logreg_ai_explain", use_container_width=True):
+        with st.spinner("⏳ Отправляем результаты..."):
+            time.sleep(1.0)
+            try:
+                top_features = data["importance_df"]["Feature"].head(5).tolist() if "importance_df" in data else None
+            except:
+                top_features = None
+            connect_ai_model_results(
+                metrics=data["metrics"],
+                model_type="Логистическая регрессия",
+                target_col=data["target_col"],
+                top_features=top_features
+            )
+        st.success("✅ Результаты отправлены в ИИ. Перейдите в раздел 'Чат с ИИ' и спросите о метриках!")
+    
+    # Разделитель и Экспорт
+    st.markdown("---")
     show_export_buttons(data)

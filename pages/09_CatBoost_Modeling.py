@@ -13,6 +13,8 @@ from Utils.catboost_modeling import (
     valid_eval_metrics_for_task,
     predict_new_object
 )
+from Utils.AI_helper import connect_ai_model_results
+import time as time_module
 
 
 
@@ -263,3 +265,38 @@ if state:
                     st.plotly_chart(fig_pos, use_container_width=True, key="feat_imp_pos")
                 if fig_neg:
                     st.plotly_chart(fig_neg, use_container_width=True, key="feat_imp_neg")
+
+    # === Кнопка объяснения результатов в ИИ (перед экспортом) ===
+    if st.button("🤖 Объяснить результаты в ИИ", key="catboost_ai_explain_bottom", use_container_width=True):
+        with st.spinner("⏳ Отправляем результаты..."):
+            time_module.sleep(1.0)
+            try:
+                top_features = state["importance_df"]["feature"].head(5).tolist() if "importance_df" in state else None
+            except:
+                top_features = None
+            connect_ai_model_results(
+                metrics=state["metrics"],
+                model_type=f"CatBoost ({state['task']})",
+                target_col=state["target_col"],
+                top_features=top_features
+            )
+        st.success("✅ Результаты отправлены в ИИ. Перейдите в 'Чат с ИИ' и спросите о метриках!")
+
+    # === Экспорт модели (в самом конце) ===
+    st.markdown("---")
+    st.subheader("📥 Экспорт модели")
+    
+    import pickle
+    import io
+    
+    model_bytes = io.BytesIO()
+    pickle.dump(state["model"], model_bytes)
+    model_bytes.seek(0)
+    
+    st.download_button(
+        label="💾 Скачать модель (.pkl)",
+        data=model_bytes,
+        file_name="catboost_model.pkl",
+        mime="application/octet-stream",
+        use_container_width=True
+    )
