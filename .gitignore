@@ -29,3 +29,6 @@ dist/
 
 # Test cache
 .pytest_cache/
+
+# Streamlit secrets (API keys)
+.streamlit/secrets.toml

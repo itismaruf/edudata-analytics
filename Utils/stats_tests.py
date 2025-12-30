@@ -35,14 +35,33 @@ def group_summary(df: pd.DataFrame, num_col: str, cat_col: str) -> pd.DataFrame:
 
 # ==== Вывод результатов теста ====
 def display_test_result(test_name: str, stat_label: str, stat_value: float, p_value: float, alpha: float = 0.05):
-    """Единый формат вывода результатов статистического теста."""
-    if p_value < alpha:
-        st.success(f"✅ {test_name}: различия значимы (p = {p_value:.4f})")
-    else:
-        st.info(f"ℹ️ {test_name}: различия незначимы (p = {p_value:.4f})")
+    """Единый формат вывода результатов статистического теста с подробным пояснением."""
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(label=stat_label, value=f"{stat_value:.4f}")
+    with col2:
+        st.metric(label="p‑value", value=f"{p_value:.4f}")
 
-    st.metric(label=stat_label, value=f"{stat_value:.4f}")
-    st.metric(label="p‑value", value=f"{p_value:.4f}")
+    st.markdown("---")
+    
+    if p_value < alpha:
+        st.success(f"✅ **Результат значимый** (p < {alpha})")
+        st.markdown(f"""
+        **Интерпретация:**
+        Так как **p-value ({p_value:.4f})** меньше уровня значимости **{alpha}**, мы **отвергаем нулевую гипотезу**.
+        
+        👉 Это означает, что **обнаружены статистически значимые различия** (или связь) между группами.
+        Шанс получить такие данные при отсутствии реальных различий очень мал (менее {alpha*100}%).
+        """)
+    else:
+        st.info(f"ℹ️ **Результат незначимый** (p ≥ {alpha})")
+        st.markdown(f"""
+        **Интерпретация:**
+        Так как **p-value ({p_value:.4f})** больше или равно уровню значимости **{alpha}**, мы **не можем отвергнуть нулевую гипотезу**.
+        
+        👉 Это означает, что **статистически значимых различий** между группами **не обнаружено**. 
+        Наблюдаемые различия могут быть случайными.
+        """)
 
 # ==== Bar chart со средними ====
 def plot_group_means(summary_df: pd.DataFrame, title: str = "Сравнение средних значений"):
@@ -322,7 +341,9 @@ def run_ttest_and_plot(df, target_col, group_col, paired, viz_type):
     if err:
         st.error(err)
         return
-    st.markdown(f"**t‑статистика:** {stat:.3f} &nbsp;&nbsp; **p‑value:** {pval:.6f}")
+    
+    # Используем общую функцию для вывода результатов с пояснением
+    display_test_result("t-test", "t-статистика", stat, pval)
 
     # --- Визуализация ---
     if viz_type == "Boxplot":
@@ -368,7 +389,11 @@ def show_ttest_ui(df):
     levels = df[group_col].dropna().unique().tolist()
 
     if len(levels) >= 2:
-        st.caption(f"Доступные группы: {', '.join(map(repr, levels))}")
+        if len(levels) > 10:
+            shown_levels = ", ".join(map(repr, levels[:10]))
+            st.caption(f"Доступные группы (первые 10): {shown_levels}, ... (+ еще {len(levels)-10})")
+        else:
+            st.caption(f"Доступные группы: {', '.join(map(repr, levels))}")
     else:
         st.error("❌ Нужно минимум две группы для t‑теста.")
         return
@@ -416,7 +441,9 @@ def run_anova_and_plot(df, target_col, group_col, viz_type):
     if err:
         st.error(err)
         return
-    st.markdown(f"**F‑статистика:** {stat:.3f} &nbsp;&nbsp; **p‑value:** {pval:.6f}")
+    
+    # Используем общую функцию для вывода результатов с пояснением
+    display_test_result("ANOVA", "F-статистика", stat, pval)
 
     # --- Визуализация ---
     if viz_type == "Boxplot":
