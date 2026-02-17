@@ -88,7 +88,7 @@ def _call_ai_api(messages, model="meta-llama/llama-3.3-70b-instruct:free"):
 
 # === Публичные функции ===
 
-def send_user_message(user_text: str, model="meta-llama/llama-3.3-70b-instruct:free") -> str:
+def send_user_message(user_text: str, model="stepfun/step-3.5-flash:free") -> str:
     """
     Отправляет сообщение пользователя в единый чат и возвращает ответ.
     Используется в основном окне чата.
@@ -151,7 +151,7 @@ def connect_ai_context(df) -> None:
     history.append({"role": "assistant", "content": "Контекст данных принят. Я готов отвечать на вопросы по этому датасету."})
 
     
-def notify_ai_about_context(df, user_goal="", model="meta-llama/llama-3.3-70b-instruct:free") -> str:
+def notify_ai_about_context(df, user_goal="", model="stepfun/step-3.5-flash:free") -> str:
     """
     DEPRECATED: Используйте connect_ai_context для тихого подключения.
     Оставлено для совместимости, если где-то еще вызывается.
@@ -160,7 +160,7 @@ def notify_ai_about_context(df, user_goal="", model="meta-llama/llama-3.3-70b-in
     return "Функция устарела. Используйте кнопку 'Подключить ИИ' в новом интерфейсе."
 
 
-def notify_ai_about_correlation(df, model="meta-llama/llama-3.3-70b-instruct:free") -> str:
+def notify_ai_about_correlation(df, model="stepfun/step-3.5-flash:free") -> str:
     """Фиксирует найденные корреляции в истории чата."""
     numeric_df = df.select_dtypes(include="number")
     if numeric_df.shape[1] < 2:
@@ -240,7 +240,7 @@ def connect_ai_model_results(metrics: dict, model_type: str, target_col: str, to
     history.append({"role": "assistant", "content": f"Результаты модели {model_type} приняты. Готов объяснить метрики или дать рекомендации."})
 
 
-def notify_ai_about_pivot(pivot_table, index_cols_str, value_col, agg_func, model="meta-llama/llama-3.3-70b-instruct:free") -> str:
+def notify_ai_about_pivot(pivot_table, index_cols_str, value_col, agg_func, model="stepfun/step-3.5-flash:free") -> str:
     """DEPRECATED: Use connect_ai_pivot instead."""
     return "Функция устарела."
 
