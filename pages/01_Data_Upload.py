@@ -12,6 +12,25 @@ class NamedBytesIO(io.BytesIO):
         super().__init__(data)
         self.name = name
 
+
+def save_dataset_to_current_project(file_bytes, filename, df, project_id):
+    file_obj = NamedBytesIO(file_bytes, filename)
+    file_path = upload_dataset_file(file_obj, project_id)
+    if not file_path:
+        return None, "Could not upload dataset file. Check Supabase Storage bucket and permissions."
+
+    dataset = create_dataset_record(
+        project_id=project_id,
+        original_filename=filename,
+        file_path=file_path,
+        rows_count=int(df.shape[0]),
+        columns_count=int(df.shape[1]),
+    )
+    if not dataset:
+        return None, "File uploaded, but dataset metadata could not be saved."
+    return dataset, None
+
+
 st.title("📥 Загрузка данных")
 st.caption("Загрузите ваш файл в формате CSV или Excel для начала анализа.")
 
@@ -36,6 +55,20 @@ if "df" not in st.session_state:
             st.session_state["pending_dataset_filename"] = uploaded_file.name
             st.session_state.pop("current_dataset_id", None)
             st.success("Данные успешно загружены", icon="✅")
+
+            if is_supabase_configured() and current_project_id:
+                with st.spinner("Saving dataset to current project..."):
+                    dataset, save_error = save_dataset_to_current_project(
+                        st.session_state["pending_dataset_file_bytes"],
+                        st.session_state["pending_dataset_filename"],
+                        df,
+                        current_project_id,
+                    )
+                if dataset:
+                    st.session_state["current_dataset_id"] = dataset["id"]
+                    st.success("Dataset automatically saved to the current project.")
+                else:
+                    st.warning(save_error)
         except Exception as e:
             st.error(f"Ошибка при обработке данных: {e}", icon="🚫")
 else:
@@ -65,29 +98,20 @@ if "df" in st.session_state:
             if st.session_state.get("current_dataset_id"):
                 st.success("Dataset is saved in the current project.")
             elif st.session_state.get("pending_dataset_file_bytes") and st.session_state.get("pending_dataset_filename"):
-                st.caption("Save the uploaded source file to Supabase Storage and create dataset metadata.")
-                if st.button("Save dataset to project"):
+                st.caption("Automatic saving did not complete. You can retry saving this uploaded source file.")
+                if st.button("Retry save dataset to project"):
                     with st.spinner("Saving dataset to project..."):
-                        file_obj = NamedBytesIO(
+                        dataset, save_error = save_dataset_to_current_project(
                             st.session_state["pending_dataset_file_bytes"],
                             st.session_state["pending_dataset_filename"],
+                            df,
+                            current_project_id,
                         )
-                        file_path = upload_dataset_file(file_obj, current_project_id)
-                        if not file_path:
-                            st.error("Could not upload dataset file. Check Supabase Storage bucket and permissions.")
+                        if dataset:
+                            st.session_state["current_dataset_id"] = dataset["id"]
+                            st.success("Dataset saved to project.")
                         else:
-                            dataset = create_dataset_record(
-                                project_id=current_project_id,
-                                original_filename=st.session_state["pending_dataset_filename"],
-                                file_path=file_path,
-                                rows_count=int(df.shape[0]),
-                                columns_count=int(df.shape[1]),
-                            )
-                            if dataset:
-                                st.session_state["current_dataset_id"] = dataset["id"]
-                                st.success("Dataset saved to project.")
-                            else:
-                                st.error("File uploaded, but dataset metadata could not be saved.")
+                            st.error(save_error)
             else:
                 st.info("This dataset was loaded or created in session without an upload file to save.")
         else:
