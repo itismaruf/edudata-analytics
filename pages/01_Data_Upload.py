@@ -1,10 +1,27 @@
 import streamlit as st
 import pandas as pd
+import io
 from Utils.upload_utils import load_data, get_base_info, show_data_head, show_descriptive_stats, display_base_info
 from Utils.AI_helper import connect_ai_context
+from Utils.database_utils import create_dataset_record, upload_dataset_file
+from Utils.supabase_client import is_supabase_configured
+
+
+class NamedBytesIO(io.BytesIO):
+    def __init__(self, data: bytes, name: str):
+        super().__init__(data)
+        self.name = name
 
 st.title("📥 Загрузка данных")
 st.caption("Загрузите ваш файл в формате CSV или Excel для начала анализа.")
+
+current_project_id = st.session_state.get("current_project_id")
+current_project_name = st.session_state.get("current_project_name")
+
+if current_project_name:
+    st.info(f"Current project: {current_project_name}")
+elif is_supabase_configured():
+    st.info("You can analyze data without saving, or select/create a project to save it permanently.")
 
 # --- Загрузка данных ---
 if "df" not in st.session_state:
@@ -15,6 +32,9 @@ if "df" not in st.session_state:
         try:
             df = load_data(uploaded_file)
             st.session_state["df"] = df
+            st.session_state["pending_dataset_file_bytes"] = uploaded_file.getvalue()
+            st.session_state["pending_dataset_filename"] = uploaded_file.name
+            st.session_state.pop("current_dataset_id", None)
             st.success("Данные успешно загружены", icon="✅")
         except Exception as e:
             st.error(f"Ошибка при обработке данных: {e}", icon="🚫")
@@ -37,6 +57,41 @@ if "df" in st.session_state:
     # Метрики
     base_info = get_base_info(df)
     display_base_info(base_info)
+
+    if is_supabase_configured():
+        st.markdown("---")
+        st.subheader("💾 Save dataset")
+        if current_project_id:
+            if st.session_state.get("current_dataset_id"):
+                st.success("Dataset is saved in the current project.")
+            elif st.session_state.get("pending_dataset_file_bytes") and st.session_state.get("pending_dataset_filename"):
+                st.caption("Save the uploaded source file to Supabase Storage and create dataset metadata.")
+                if st.button("Save dataset to project"):
+                    with st.spinner("Saving dataset to project..."):
+                        file_obj = NamedBytesIO(
+                            st.session_state["pending_dataset_file_bytes"],
+                            st.session_state["pending_dataset_filename"],
+                        )
+                        file_path = upload_dataset_file(file_obj, current_project_id)
+                        if not file_path:
+                            st.error("Could not upload dataset file. Check Supabase Storage bucket and permissions.")
+                        else:
+                            dataset = create_dataset_record(
+                                project_id=current_project_id,
+                                original_filename=st.session_state["pending_dataset_filename"],
+                                file_path=file_path,
+                                rows_count=int(df.shape[0]),
+                                columns_count=int(df.shape[1]),
+                            )
+                            if dataset:
+                                st.session_state["current_dataset_id"] = dataset["id"]
+                                st.success("Dataset saved to project.")
+                            else:
+                                st.error("File uploaded, but dataset metadata could not be saved.")
+            else:
+                st.info("This dataset was loaded or created in session without an upload file to save.")
+        else:
+            st.info("You can analyze data without saving, or select/create a project to save it permanently.")
 
     # — Инициализация/обновление краткого summary —
     data_sig = (tuple(df.columns), df.shape)

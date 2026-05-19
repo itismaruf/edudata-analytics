@@ -78,3 +78,4 @@ yarl==1.19.0
 catboost
 tabulate
 watchdog
+supabase
