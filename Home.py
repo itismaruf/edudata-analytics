@@ -44,7 +44,7 @@ pages = {
         st.Page(show_home, title="Главная", icon="🏠", default=True),
     ],
     "Данные": [
-        st.Page("pages/00_Projects.py", title="Projects", icon="🗂️"),
+        st.Page("pages/00_Projects.py", title="Проекты", icon="🗂️"),
         st.Page("pages/01_Data_Upload.py", title="Загрузка данных", icon="📥"),
         st.Page("pages/02_Auto_Processing.py", title="Автообработка данных", icon="🛡️"),
         st.Page("pages/03_Missing_Values.py", title="Обработка пропусков", icon="⚙️"),

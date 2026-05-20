@@ -120,6 +120,22 @@ def upload_dataset_file(file, project_id):
         return None
 
 
+def upload_binary_file(content, file_path, content_type="application/octet-stream"):
+    client = get_supabase_client()
+    if client is None or content is None or not file_path:
+        return None
+
+    try:
+        client.storage.from_(DATASETS_BUCKET).upload(
+            path=file_path,
+            file=content,
+            file_options={"content-type": content_type, "upsert": "false"},
+        )
+        return file_path
+    except Exception:
+        return None
+
+
 def create_dataset_record(project_id, original_filename, file_path, rows_count, columns_count):
     client = get_supabase_client()
     if client is None or not project_id or not original_filename or not file_path:
@@ -168,6 +184,10 @@ def download_dataset_file(file_path):
         return client.storage.from_(DATASETS_BUCKET).download(file_path)
     except Exception:
         return None
+
+
+def download_binary_file(file_path):
+    return download_dataset_file(file_path)
 
 
 def save_educational_schema(dataset_id, schema_dict):

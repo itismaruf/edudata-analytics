@@ -17,7 +17,7 @@ def save_dataset_to_current_project(file_bytes, filename, df, project_id):
     file_obj = NamedBytesIO(file_bytes, filename)
     file_path = upload_dataset_file(file_obj, project_id)
     if not file_path:
-        return None, "Could not upload dataset file. Check Supabase Storage bucket and permissions."
+        return None, "Не удалось загрузить файл датасета. Проверьте bucket Supabase Storage и права доступа."
 
     dataset = create_dataset_record(
         project_id=project_id,
@@ -27,7 +27,7 @@ def save_dataset_to_current_project(file_bytes, filename, df, project_id):
         columns_count=int(df.shape[1]),
     )
     if not dataset:
-        return None, "File uploaded, but dataset metadata could not be saved."
+        return None, "Файл загружен, но метаданные датасета не сохранились."
     return dataset, None
 
 
@@ -38,9 +38,9 @@ current_project_id = st.session_state.get("current_project_id")
 current_project_name = st.session_state.get("current_project_name")
 
 if current_project_name:
-    st.info(f"Current project: {current_project_name}")
+    st.info(f"Текущий проект: {current_project_name}")
 elif is_supabase_configured():
-    st.info("You can analyze data without saving, or select/create a project to save it permanently.")
+    st.info("Можно анализировать данные без сохранения или выбрать/создать проект для постоянного хранения.")
 
 # --- Загрузка данных ---
 if "df" not in st.session_state:
@@ -57,7 +57,7 @@ if "df" not in st.session_state:
             st.success("Данные успешно загружены", icon="✅")
 
             if is_supabase_configured() and current_project_id:
-                with st.spinner("Saving dataset to current project..."):
+                with st.spinner("Сохраняем датасет в текущий проект..."):
                     dataset, save_error = save_dataset_to_current_project(
                         st.session_state["pending_dataset_file_bytes"],
                         st.session_state["pending_dataset_filename"],
@@ -66,7 +66,7 @@ if "df" not in st.session_state:
                     )
                 if dataset:
                     st.session_state["current_dataset_id"] = dataset["id"]
-                    st.success("Dataset automatically saved to the current project.")
+                    st.success("Датасет автоматически сохранен в текущем проекте.")
                 else:
                     st.warning(save_error)
         except Exception as e:
@@ -93,14 +93,14 @@ if "df" in st.session_state:
 
     if is_supabase_configured():
         st.markdown("---")
-        st.subheader("💾 Save dataset")
+        st.subheader("💾 Сохранение датасета")
         if current_project_id:
             if st.session_state.get("current_dataset_id"):
-                st.success("Dataset is saved in the current project.")
+                st.success("Датасет сохранен в текущем проекте.")
             elif st.session_state.get("pending_dataset_file_bytes") and st.session_state.get("pending_dataset_filename"):
-                st.caption("Automatic saving did not complete. You can retry saving this uploaded source file.")
-                if st.button("Retry save dataset to project"):
-                    with st.spinner("Saving dataset to project..."):
+                st.caption("Автоматическое сохранение не завершилось. Можно повторить сохранение исходного файла.")
+                if st.button("Повторить сохранение датасета в проект"):
+                    with st.spinner("Сохраняем датасет в проект..."):
                         dataset, save_error = save_dataset_to_current_project(
                             st.session_state["pending_dataset_file_bytes"],
                             st.session_state["pending_dataset_filename"],
@@ -109,13 +109,13 @@ if "df" in st.session_state:
                         )
                         if dataset:
                             st.session_state["current_dataset_id"] = dataset["id"]
-                            st.success("Dataset saved to project.")
+                            st.success("Датасет сохранен в проект.")
                         else:
                             st.error(save_error)
             else:
-                st.info("This dataset was loaded or created in session without an upload file to save.")
+                st.info("Этот датасет был загружен или создан в сессии без исходного файла для сохранения.")
         else:
-            st.info("You can analyze data without saving, or select/create a project to save it permanently.")
+            st.info("Можно анализировать данные без сохранения или выбрать/создать проект для постоянного хранения.")
 
     # — Инициализация/обновление краткого summary —
     data_sig = (tuple(df.columns), df.shape)

@@ -9,7 +9,33 @@ load_dotenv()
 # Используем ключ из secrets или env.
 # Если нет ключа — можно использовать Free Tier OpenRouter или аналоги, если пользователь предоставит.
 # Здесь оставляем логику чтения ключа.
-API_KEY = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+def _read_secret_or_env(name, default=None):
+    try:
+        value = st.secrets.get(name)
+    except Exception:
+        value = None
+    return value or os.getenv(name) or default
+
+
+def _read_model_list(name, default_models):
+    raw_value = _read_secret_or_env(name)
+    if not raw_value:
+        return list(default_models)
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+API_KEY = _read_secret_or_env("OPENAI_API_KEY")
+DEFAULT_LLM_MODEL = _read_secret_or_env(
+    "OPENROUTER_MODEL",
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+)
+FALLBACK_LLM_MODELS = _read_model_list(
+    "OPENROUTER_FALLBACK_MODELS",
+    [
+        "openrouter/free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+    ],
+)
 
 # === Системный промпт (Persona) ===
 SYSTEM_PROMPT = (
@@ -53,42 +79,93 @@ def reset_ai_memory():
     st.session_state["chat_history"] = [{"role": "system", "content": SYSTEM_PROMPT}]
     # Также можно очищать контекстные переменные, если они хранятся отдельно
 
-def _call_ai_api(messages, model="meta-llama/llama-3.3-70b-instruct:free"):
+
+def _model_chain(primary_model=None):
+    models = [primary_model or DEFAULT_LLM_MODEL] + FALLBACK_LLM_MODELS
+    unique_models = []
+    for item in models:
+        if item and item not in unique_models:
+            unique_models.append(item)
+    return unique_models
+
+
+def _api_error_details(resp):
+    try:
+        payload = resp.json()
+    except Exception:
+        return resp.text, None
+
+    error = payload.get("error", {}) if isinstance(payload, dict) else {}
+    message = error.get("message") or str(payload)
+    metadata = error.get("metadata") or {}
+    retry_after = metadata.get("retry_after_seconds") or metadata.get("retry_after_seconds_raw")
+    return message, retry_after
+
+
+def _should_try_next_model(status_code, error_message):
+    if status_code == 429:
+        return True
+    if status_code == 404 and "No endpoints found" in str(error_message):
+        return True
+    return False
+
+
+def _call_ai_api(messages, model=None):
     """Внутренняя функция запроса к API."""
     if not API_KEY:
         return "❌ API-ключ не найден. Проверьте настройки (.env или secrets)."
 
-    try:
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json",
-                 "HTTP-Referer": "http://localhost:8501", # OpenRouter requirement
-                 "X-Title": "EduStat AI"
-            },
-            json={
-                "model": model,
-                "messages": messages
-            },
-            timeout=30
+    last_error = None
+    last_retry_after = None
+
+    for selected_model in _model_chain(model):
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json",
+                     "HTTP-Referer": "http://localhost:8501", # OpenRouter requirement
+                     "X-Title": "EduStat AI"
+                },
+                json={
+                    "model": selected_model,
+                    "messages": messages
+                },
+                timeout=30
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                if "choices" in data and data["choices"]:
+                    return data["choices"][0]["message"]["content"]
+                return f"❌ Пустой или некорректный ответ API: {data}"
+
+            error_message, retry_after = _api_error_details(resp)
+            last_error = f"{selected_model}: {error_message}"
+            last_retry_after = retry_after or last_retry_after
+
+            if _should_try_next_model(resp.status_code, error_message):
+                continue
+
+            return f"❌ Ошибка API ({resp.status_code}): {error_message}"
+
+        except Exception as e:
+            last_error = f"{selected_model}: {e}"
+            continue
+
+    if last_retry_after:
+        return (
+            "❌ Сейчас LLM временно ограничен по лимитам OpenRouter. "
+            f"Попробуйте еще раз примерно через {int(float(last_retry_after))} секунд."
         )
-        
-        if resp.status_code != 200:
-            return f"❌ Ошибка API ({resp.status_code}): {resp.text}"
 
-        data = resp.json()
-        if "choices" in data and data["choices"]:
-            return data["choices"][0]["message"]["content"]
-        
-        return f"❌ Пустой или некорректный ответ API: {data}"
+    return f"❌ Не удалось получить ответ от доступных LLM-моделей. Последняя ошибка: {last_error}"
 
-    except Exception as e:
-        return f"❌ Ошибка соединения: {e}"
 
 # === Публичные функции ===
 
-def send_user_message(user_text: str, model="stepfun/step-3.5-flash:free") -> str:
+def send_user_message(user_text: str, model=None) -> str:
     """
     Отправляет сообщение пользователя в единый чат и возвращает ответ.
     Используется в основном окне чата.
@@ -151,7 +228,7 @@ def connect_ai_context(df) -> None:
     history.append({"role": "assistant", "content": "Контекст данных принят. Я готов отвечать на вопросы по этому датасету."})
 
     
-def notify_ai_about_context(df, user_goal="", model="stepfun/step-3.5-flash:free") -> str:
+def notify_ai_about_context(df, user_goal="", model=None) -> str:
     """
     DEPRECATED: Используйте connect_ai_context для тихого подключения.
     Оставлено для совместимости, если где-то еще вызывается.
@@ -160,7 +237,7 @@ def notify_ai_about_context(df, user_goal="", model="stepfun/step-3.5-flash:free
     return "Функция устарела. Используйте кнопку 'Подключить ИИ' в новом интерфейсе."
 
 
-def notify_ai_about_correlation(df, model="stepfun/step-3.5-flash:free") -> str:
+def notify_ai_about_correlation(df, model=None) -> str:
     """Фиксирует найденные корреляции в истории чата."""
     numeric_df = df.select_dtypes(include="number")
     if numeric_df.shape[1] < 2:
@@ -240,7 +317,7 @@ def connect_ai_model_results(metrics: dict, model_type: str, target_col: str, to
     history.append({"role": "assistant", "content": f"Результаты модели {model_type} приняты. Готов объяснить метрики или дать рекомендации."})
 
 
-def notify_ai_about_pivot(pivot_table, index_cols_str, value_col, agg_func, model="stepfun/step-3.5-flash:free") -> str:
+def notify_ai_about_pivot(pivot_table, index_cols_str, value_col, agg_func, model=None) -> str:
     """DEPRECATED: Use connect_ai_pivot instead."""
     return "Функция устарела."
 
