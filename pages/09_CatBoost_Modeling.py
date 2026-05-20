@@ -149,6 +149,13 @@ if st.button("🚀 Обучить модель CatBoost", use_container_width=Tr
 # --- Если модель уже обучена ---
 state = st.session_state.get("catboost_state")
 if state:
+    has_model = state.get("model") is not None
+    if "importance_figs" not in state and state.get("importance_df") is not None:
+        try:
+            state["importance_figs"] = plot_feature_importance_signed(state["importance_df"], top_n=15)
+        except Exception:
+            state["importance_figs"] = {}
+
     tabs = st.tabs(["📊 Результаты модели", "🔮 Прогноз нового объекта"])
 
     # --- Вкладка 1: результаты ---
@@ -161,10 +168,11 @@ if state:
             )
             st.table(metrics_df)
 
-        if state["task"] == "binary" and "roc_fig" in state["viz"] and "pr_fig" in state["viz"]:
+        viz = state.get("viz") or {}
+        if state["task"] == "binary" and "roc_fig" in viz and "pr_fig" in viz:
             with st.expander("📈 Визуализация метрик (ROC и PR)", expanded=True):
-                st.plotly_chart(state["viz"]["roc_fig"], use_container_width=True)
-                st.plotly_chart(state["viz"]["pr_fig"], use_container_width=True)
+                st.plotly_chart(viz["roc_fig"], use_container_width=True)
+                st.plotly_chart(viz["pr_fig"], use_container_width=True)
 
         if state.get("confusion_matrix") is not None:
             with st.expander("🧩 Confusion Matrix", expanded=True):
@@ -173,17 +181,19 @@ if state:
         with st.expander("🔥 Важность признаков (топ-15)", expanded=True):
             colp, coln = st.columns(2)
             with colp:
-                fig_pos = state["importance_figs"].get("pos")
+                fig_pos = state.get("importance_figs", {}).get("pos")
                 if fig_pos:
                     st.plotly_chart(fig_pos, use_container_width=True)
             with coln:
-                fig_neg = state["importance_figs"].get("neg")
+                fig_neg = state.get("importance_figs", {}).get("neg")
                 if fig_neg:
                     st.plotly_chart(fig_neg, use_container_width=True)
 
     # --- Вкладка 2: прогноз нового объекта ---
     with tabs[1]:
         st.subheader("🔮 Прогнозирование нового объекта")
+        if not has_model:
+            st.info("Модель восстановлена как сохраненный результат. Для новых прогнозов переобучите CatBoost.")
 
         feature_inputs = {}
         cols = st.columns(2)
@@ -203,7 +213,7 @@ if state:
 
         output_area = st.empty()
 
-        if st.button("📌 Сделать прогноз", use_container_width=True):
+        if st.button("📌 Сделать прогноз", disabled=not has_model, use_container_width=True):
             with st.spinner("⏳ Модель делает прогноз..."):
                 time.sleep(1.5)
                 try:
@@ -258,8 +268,8 @@ if state:
 
                 # --- Важность признаков (из обучения) ---
                 st.markdown("### Признаки которые влияли на прогноз")
-                fig_pos = state["importance_figs"].get("pos")
-                fig_neg = state["importance_figs"].get("neg")
+                fig_pos = state.get("importance_figs", {}).get("pos")
+                fig_neg = state.get("importance_figs", {}).get("neg")
 
                 if fig_pos:
                     st.plotly_chart(fig_pos, use_container_width=True, key="feat_imp_pos")
@@ -285,6 +295,9 @@ if state:
     # === Экспорт модели (в самом конце) ===
     st.markdown("---")
     st.subheader("📥 Экспорт модели")
+    if not has_model:
+        st.info("Экспорт модели недоступен для восстановленного снимка без обученного объекта модели.")
+        st.stop()
     
     import pickle
     import io

@@ -367,6 +367,21 @@ def run_ttest_and_plot(df, target_col, group_col, paired, viz_type):
     # --- Таблица со статистикой ---
     desc = df.groupby(group_col)[target_col].describe().reset_index()
     st.dataframe(desc.style.format(precision=3))
+    st.session_state["stats_test_results"] = {
+        "test": "t-test",
+        "stat_label": "t-статистика",
+        "stat_value": float(stat),
+        "p_value": float(pval),
+        "config": {
+            "target_col": target_col,
+            "group_col": group_col,
+            "paired": paired,
+            "viz_type": viz_type,
+        },
+        "figure": fig,
+        "summary": desc,
+    }
+    st.session_state["group_comparison_results"] = st.session_state["stats_test_results"]
 
 def show_ttest_ui(df):
     num_cols = df.select_dtypes(include=["number"]).columns.tolist()
@@ -505,6 +520,20 @@ def run_anova_and_plot(df, target_col, group_col, viz_type):
     # --- Таблица со статистикой ---
     desc = df.groupby(group_col)[target_col].describe().reset_index()
     st.dataframe(desc.style.format(precision=3))
+    st.session_state["stats_test_results"] = {
+        "test": "ANOVA",
+        "stat_label": "F-статистика",
+        "stat_value": float(stat),
+        "p_value": float(pval),
+        "config": {
+            "target_col": target_col,
+            "group_col": group_col,
+            "viz_type": viz_type,
+        },
+        "figure": fig,
+        "summary": desc,
+    }
+    st.session_state["group_comparison_results"] = st.session_state["stats_test_results"]
 
 # --- UI ---
 def show_anova_ui(df):
@@ -556,6 +585,20 @@ def run_chi2(df: pd.DataFrame, col1: str, col2: str, plot_choice: str = "Авт�
     st.dataframe(table)
     st.subheader("📊 Ожидаемые значения")
     st.dataframe(expected_df.round(2))
+    st.session_state["stats_test_results"] = {
+        "test": "Chi-square",
+        "stat_label": "Chi²-статистика",
+        "stat_value": float(chi2),
+        "p_value": float(p),
+        "config": {
+            "col1": col1,
+            "col2": col2,
+            "plot_choice": plot_choice,
+        },
+        "observed": table,
+        "expected": expected_df.round(2),
+    }
+    st.session_state["group_comparison_results"] = st.session_state["stats_test_results"]
 
 
 def show_chi2_ui(df):

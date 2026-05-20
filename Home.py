@@ -1,11 +1,15 @@
 import streamlit as st
 from Utils.ui_config import show_splash, init_api_key, init_session
+from Utils.i18n import init_language, install_streamlit_i18n, render_language_selector, t
 
 # --- Config (Must be first) ---
 st.set_page_config(page_title="EduStat AI", layout="wide")
+init_language()
+install_streamlit_i18n()
 
 # --- Init Utils ---
 show_splash()
+render_language_selector()
 init_api_key()
 init_session()
 
@@ -40,27 +44,27 @@ def show_home():
 
 # --- Navigation Setup ---
 pages = {
-    "Главная": [
-        st.Page(show_home, title="Главная", icon="🏠", default=True),
+    t("Главная"): [
+        st.Page(show_home, title=t("Главная"), icon="🏠", default=True),
     ],
-    "Данные": [
-        st.Page("pages/00_Projects.py", title="Проекты", icon="🗂️"),
-        st.Page("pages/01_Data_Upload.py", title="Загрузка данных", icon="📥"),
-        st.Page("pages/02_Auto_Processing.py", title="Автообработка данных", icon="🛡️"),
-        st.Page("pages/03_Missing_Values.py", title="Обработка пропусков", icon="⚙️"),
-        st.Page("pages/04_Outlier_Handling.py", title="Обработка выбросов", icon="🚩"),
+    t("Данные"): [
+        st.Page("pages/00_Projects.py", title=t("Проекты"), icon="🗂️"),
+        st.Page("pages/01_Data_Upload.py", title=t("Загрузка данных"), icon="📥"),
+        st.Page("pages/02_Auto_Processing.py", title=t("Автообработка данных"), icon="🛡️"),
+        st.Page("pages/03_Missing_Values.py", title=t("Обработка пропусков"), icon="⚙️"),
+        st.Page("pages/04_Outlier_Handling.py", title=t("Обработка выбросов"), icon="🚩"),
     ],
-    "Анализ": [
-        st.Page("pages/05_Visual_Analysis.py", title="Визуальный анализ", icon="📊"),
-        st.Page("pages/06_Pivot_Tables.py", title="Сводные таблицы", icon="📟"),
-        st.Page("pages/07_Group_Comparison.py", title="Сравнение групп", icon="⚖️"),
+    t("Анализ"): [
+        st.Page("pages/05_Visual_Analysis.py", title=t("Визуальный анализ"), icon="📊"),
+        st.Page("pages/06_Pivot_Tables.py", title=t("Сводные таблицы"), icon="📟"),
+        st.Page("pages/07_Group_Comparison.py", title=t("Сравнение групп"), icon="⚖️"),
     ],
-    "Моделирование": [
-        st.Page("pages/08_Logistic_Regression.py", title="Логистическая регрессия", icon="📈"),
-        st.Page("pages/09_CatBoost_Modeling.py", title="CatBoost моделирование", icon="🐈"),
+    t("Моделирование"): [
+        st.Page("pages/08_Logistic_Regression.py", title=t("Логистическая регрессия"), icon="📈"),
+        st.Page("pages/09_CatBoost_Modeling.py", title=t("CatBoost моделирование"), icon="🐈"),
     ],
-    "Помощь": [
-        st.Page("pages/10_AI_Chat.py", title="Чат с ИИ", icon="💬"),
+    t("Помощь"): [
+        st.Page("pages/10_AI_Chat.py", title=t("Чат с ИИ"), icon="💬"),
     ]
 }
 

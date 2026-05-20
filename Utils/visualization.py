@@ -309,6 +309,13 @@ def show_chart_tab(df: pd.DataFrame) -> None:
                 )
                 st.session_state["eda_fig"] = fig
                 st.session_state["eda_built"] = True
+                st.session_state["visualization_state"] = {
+                    "x": x,
+                    "y": y,
+                    "z": z,
+                    "chart_type": chart_type,
+                    "numeric_filters": filters,
+                }
         
         if st.session_state.get("eda_built"):
             fig = st.session_state.get("eda_fig")
@@ -339,8 +346,14 @@ def show_correlation_tab(df: pd.DataFrame) -> None:
     st.subheader("❄️ Корреляционный анализ")
     st.caption("Показывает силу связи между числовыми переменными. 1 = сильная связь, 0 = нет связи.")
     
+    numeric_df = df.select_dtypes(include="number")
     fig = plot_correlation_heatmap(df)
     if fig:
+        st.session_state["correlation_results"] = {
+            "columns": numeric_df.columns.tolist(),
+            "matrix": numeric_df.corr(),
+            "figure": fig,
+        }
         st.plotly_chart(fig, use_container_width=True)
         # Добавляем кнопку отправки в ИИ
         if st.button("📤 Отправить корреляции в ИИ", key="send_corr_ai"):
@@ -399,6 +412,12 @@ def show_pivot_tab(df: pd.DataFrame) -> None:
     pivot_table = generate_pivot_table(df, index_cols, value_col, agg_func)
     
     if pivot_table is not None and not pivot_table.empty:
+        st.session_state["pivot_table"] = pivot_table
+        st.session_state["pivot_config"] = {
+            "index_cols": index_cols,
+            "value_col": value_col,
+            "agg_func": agg_func,
+        }
         st.dataframe(pivot_table, use_container_width=True)
 
         # === Кнопка фиксации в ИИ ===
@@ -452,6 +471,7 @@ def show_pivot_tab(df: pd.DataFrame) -> None:
                         title=f"Bar график: {agg_func}({value_col})"
                     )
                     fig.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+                    st.session_state["pivot_chart_fig"] = fig
                     st.plotly_chart(fig, use_container_width=True)
 
                 elif chart_type == "Pie":
@@ -464,6 +484,7 @@ def show_pivot_tab(df: pd.DataFrame) -> None:
                             values=agg_col,
                             title=f"Pie график: {agg_func}({value_col})"
                         )
+                        st.session_state["pivot_chart_fig"] = fig
                         st.plotly_chart(fig, use_container_width=True)
 
                 elif chart_type == "Line":
@@ -474,6 +495,7 @@ def show_pivot_tab(df: pd.DataFrame) -> None:
                         markers=True,
                         title=f"Line график: {agg_func}({value_col})"
                     )
+                    st.session_state["pivot_chart_fig"] = fig
                     st.plotly_chart(fig, use_container_width=True)
                     
                 elif chart_type == "Sunburst (Иерархия)":
@@ -486,6 +508,7 @@ def show_pivot_tab(df: pd.DataFrame) -> None:
                             values=agg_col,
                             title=f"Иерархия: {', '.join(index_cols)}"
                         )
+                        st.session_state["pivot_chart_fig"] = fig
                         st.plotly_chart(fig, use_container_width=True)
                 
             except Exception as e:

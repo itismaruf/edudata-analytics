@@ -1,13 +1,16 @@
 import streamlit as st
 import os, time
 from Utils.AI_helper import reset_ai_memory
+from Utils.i18n import t
 
 def setup_page():
     st.set_page_config(layout="wide")
 
 def show_splash():
     if "app_loaded" not in st.session_state:
-        st.markdown("""
+        subtitle = t("Интеллектуальная система анализа и прогнозирования образовательных данных")
+        ministry = t("Разработано для Министерства образования и науки РТ")
+        splash_html = """
         <style>
             [data-testid="stSidebar"] {display: none;}
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
@@ -46,8 +49,8 @@ def show_splash():
         <div class="splash" id="splash">
             <div class="logo-icon">❖</div>
             <div class="title">EduStat AI</div>
-            <div class="subtitle">Интеллектуальная система анализа и прогнозирования образовательных данных</div>
-            <div class="ministry">Разработано для Министерства образования и науки РТ</div>
+            <div class="subtitle">__SPLASH_SUBTITLE__</div>
+            <div class="ministry">__SPLASH_MINISTRY__</div>
             <div class="loader-line"><div class="loader-fill" id="fill"></div></div>
         </div>
 
@@ -115,7 +118,13 @@ def show_splash():
                 }
             }, 200);
         </script>
-        """, unsafe_allow_html=True)
+        """
+        splash_html = (
+            splash_html
+            .replace("__SPLASH_SUBTITLE__", subtitle)
+            .replace("__SPLASH_MINISTRY__", ministry)
+        )
+        st.markdown(splash_html, unsafe_allow_html=True)
 
         import time
         time.sleep(4)
@@ -134,7 +143,7 @@ def init_session():
 
 def init_page_state():
     if 'page' not in st.session_state:
-        st.session_state['page'] = 'Загрузка данных'
+        st.session_state['page'] = t('Загрузка данных')
 
 def setup_sidebar(set_page):
     st.sidebar.header("🔧 Навигация")

@@ -86,7 +86,10 @@ if "modeling" in st.session_state:
     data = st.session_state["modeling"]
 
     show_results_and_analysis(data)
-    show_single_prediction(data, df)
+    if data.get("model") is not None and data.get("meta") is not None:
+        show_single_prediction(data, df)
+    else:
+        st.info("Модель восстановлена как сохраненный результат. Для новых прогнозов переобучите модель.")
     
     # Кнопка отправки результатов в ИИ (перед разделителем экспорта)
     if st.button("🤖 Объяснить результаты в ИИ", key="logreg_ai_explain", use_container_width=True):
@@ -106,4 +109,7 @@ if "modeling" in st.session_state:
     
     # Разделитель и Экспорт
     st.markdown("---")
-    show_export_buttons(data)
+    if data.get("model") is not None:
+        show_export_buttons(data)
+    else:
+        st.info("Экспорт модели недоступен для восстановленного снимка без обученного объекта модели.")
